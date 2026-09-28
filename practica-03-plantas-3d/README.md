@@ -4,7 +4,7 @@
 
 Este proyecto consiste en la construcción de una planta 3D utilizando Three.js y geometrías primitivas.
 
-La escena representa una planta dentro de una maceta colocada sobre un pequeño jardín. La planta fue construida mediante diferentes objetos 3D, transformaciones y grupos jerárquicos.
+La escena representa una planta dentro de una maceta, rodeada de césped y árboles para crear un pequeño jardín. La planta y el entorno se construyeron mediante objetos 3D, transformaciones y grupos jerárquicos.
 
 ## Tecnologías utilizadas
 
@@ -25,6 +25,8 @@ La planta está formada por:
 - Maceta: cilindro.
 - Tierra: cilindro.
 - Suelo: plano.
+- Césped: grupos de briznas distribuidos alrededor de la planta.
+- Árboles: troncos y copas frondosas alrededor del jardín.
 
 ## Jerarquía
 
@@ -51,7 +53,7 @@ La intensidad de la luz direccional puede modificarse mediante un control HTML.
 
 ## Animación
 
-La planta tiene una animación de balanceo suave utilizando `requestAnimationFrame`.
+La planta tiene una animación de balanceo suave utilizando `requestAnimationFrame`. El césped y las copas de los árboles se mecen ligeramente para simular una brisa.
 
 Las flores también realizan una rotación continua.
 

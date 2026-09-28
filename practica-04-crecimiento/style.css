@@ -1,0 +1,144 @@
+* {
+    box-sizing: border-box;
+}
+body {
+    margin: 0;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    background: #111827;
+}
+
+/* PANEL DEL TÍTULO */
+
+#title-panel {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    padding: 15px 20px;
+    background:
+        rgba(0, 0, 0, 0.75);
+    color: white;
+    border-radius: 10px;
+    z-index: 10;
+    min-width: 250px;
+}
+#title-panel h2 {
+    margin: 0 0 5px 0;
+}
+#title-panel p {
+    margin: 0;
+    color: #b8e6c1;
+}
+
+/* CONTROLES */
+
+#controls {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    width: 250px;
+    padding: 15px;
+    background:
+        rgba(0, 0, 0, 0.8);
+    color: white;
+    border-radius: 10px;
+    z-index: 10;
+}
+#controls h3 {
+    margin-top: 0;
+}
+#controls label {
+    display: block;
+    margin-top: 12px;
+    margin-bottom: 5px;
+}
+#controls input[type="range"] {
+    width: 100%;
+}
+#controls span {
+    display: block;
+    text-align: center;
+    margin-bottom: 5px;
+    color: #7ee787;
+}
+#controls button {
+    width: 100%;
+    padding: 9px;
+    margin-top: 8px;
+    border: none;
+    border-radius: 6px;
+    background: #2d8a4e;
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+}
+#controls button:hover {
+    background: #3aaa63;
+}
+
+/* PANEL DE CRECIMIENTO */
+
+#growth-panel {
+    position: absolute;
+    bottom: 15px;
+    left: 15px;
+    width: 280px;
+    padding: 15px;
+    background:
+        rgba(0, 0, 0, 0.8);
+    color: white;
+    border-radius: 10px;
+    z-index: 10;
+}
+#growth-panel h3 {
+    margin-top: 0;
+    color: #7ee787;
+}
+#growthPercent {
+    color: #7ee787;
+}
+#progress-container {
+    width: 100%;
+    height: 15px;
+    background: #333;
+    border-radius: 10px;
+    overflow: hidden;
+}
+#progress-bar {
+    width: 0%;
+    height: 100%;
+    background: #3aaa63;
+    transition: width 0.1s linear;
+}
+#growthStatus {
+    font-size: 13px;
+    color: #cccccc;
+}
+
+/* PANEL DE INFORMACIÓN */
+
+#info-panel {
+    position: absolute;
+    bottom: 15px;
+    right: 15px;
+    width: 280px;
+    padding: 15px;
+    background:
+        rgba(0, 0, 0, 0.8);
+    color: white;
+    border-radius: 10px;
+    z-index: 10;
+}
+#info-panel h3 {
+    margin-top: 0;
+    color: #7ee787;
+}
+#info-panel p {
+    margin: 7px 0;
+}
+
+/* CANVAS */
+
+canvas {
+    display: block;
+}

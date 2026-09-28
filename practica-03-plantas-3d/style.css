@@ -10,21 +10,15 @@ body {
 }
 
 /* Panel principal de información */
-
 #info-panel {
     position: absolute;
     top: 15px;
     left: 15px;
-
     padding: 15px 20px;
-
     background: rgba(0, 0, 0, 0.75);
     color: white;
-
     border-radius: 10px;
-
     z-index: 10;
-
     min-width: 230px;
 }
 
@@ -33,21 +27,15 @@ body {
 }
 
 /* Controles */
-
 #controls {
     position: absolute;
     top: 15px;
     right: 15px;
-
     width: 220px;
-
     padding: 15px;
-
     background: rgba(0, 0, 0, 0.75);
     color: white;
-
     border-radius: 10px;
-
     z-index: 10;
 }
 
@@ -57,18 +45,13 @@ body {
 
 #controls button {
     width: 100%;
-
     padding: 9px;
     margin-bottom: 8px;
-
     border: none;
     border-radius: 6px;
-
     background: #2d8a4e;
     color: white;
-
     cursor: pointer;
-
     font-size: 14px;
 }
 
@@ -88,23 +71,15 @@ body {
 }
 
 /* Información de la parte seleccionada */
-
 #selected-info {
     position: absolute;
-
     bottom: 15px;
     left: 15px;
-
     width: 280px;
-
     padding: 15px;
-
     background: rgba(0, 0, 0, 0.8);
-
     color: white;
-
     border-radius: 10px;
-
     z-index: 10;
 }
 
@@ -119,7 +94,6 @@ body {
 }
 
 /* Canvas */
-
 canvas {
     display: block;
 }
