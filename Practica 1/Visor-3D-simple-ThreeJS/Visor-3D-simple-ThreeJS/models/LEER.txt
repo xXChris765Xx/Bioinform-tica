@@ -1,0 +1,1 @@
+El modelo .glb se carga desde una URL externa en main.js, por lo que esta carpeta se conserva como referencia.

@@ -1,0 +1,125 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    background: #111827;
+}
+
+/* Panel principal de información */
+
+#info-panel {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+
+    padding: 15px 20px;
+
+    background: rgba(0, 0, 0, 0.75);
+    color: white;
+
+    border-radius: 10px;
+
+    z-index: 10;
+
+    min-width: 230px;
+}
+
+#info-panel h2 {
+    margin: 0 0 8px 0;
+}
+
+/* Controles */
+
+#controls {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+
+    width: 220px;
+
+    padding: 15px;
+
+    background: rgba(0, 0, 0, 0.75);
+    color: white;
+
+    border-radius: 10px;
+
+    z-index: 10;
+}
+
+#controls h3 {
+    margin-top: 0;
+}
+
+#controls button {
+    width: 100%;
+
+    padding: 9px;
+    margin-bottom: 8px;
+
+    border: none;
+    border-radius: 6px;
+
+    background: #2d8a4e;
+    color: white;
+
+    cursor: pointer;
+
+    font-size: 14px;
+}
+
+#controls button:hover {
+    background: #3aaa63;
+}
+
+#controls label {
+    display: block;
+
+    margin-top: 10px;
+    margin-bottom: 5px;
+}
+
+#lightIntensity {
+    width: 100%;
+}
+
+/* Información de la parte seleccionada */
+
+#selected-info {
+    position: absolute;
+
+    bottom: 15px;
+    left: 15px;
+
+    width: 280px;
+
+    padding: 15px;
+
+    background: rgba(0, 0, 0, 0.8);
+
+    color: white;
+
+    border-radius: 10px;
+
+    z-index: 10;
+}
+
+#selected-info h3 {
+    margin-top: 0;
+
+    color: #7ee787;
+}
+
+#selected-info p {
+    margin: 7px 0;
+}
+
+/* Canvas */
+
+canvas {
+    display: block;
+}
