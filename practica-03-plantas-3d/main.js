@@ -1,10 +1,12 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 // ESCENA
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87ceeb);
+const daytimeBackground = new THREE.Color(0x87ceeb);
+scene.background = daytimeBackground.clone();
 
 // CÁMARA
 
@@ -167,6 +169,41 @@ treePositions.forEach(([x, z], index) => {
     gardenGroup.add(tree);
     trees.push(tree);
 });
+
+// ESPANTAPÁJAROS DEL MODELO GLB
+
+const scarecrowPivot = new THREE.Group();
+scarecrowPivot.position.set(4.4, 0, -2.8);
+scarecrowPivot.userData.phase = 1.7;
+gardenGroup.add(scarecrowPivot);
+
+const gltfLoader = new GLTFLoader();
+gltfLoader.load(
+    './models/espantapajaros__scarecrow.glb',
+    (gltf) => {
+        const scarecrowModel = gltf.scene;
+        scarecrowModel.updateMatrixWorld(true);
+        const bounds = new THREE.Box3().setFromObject(scarecrowModel);
+        const size = bounds.getSize(new THREE.Vector3());
+        const modelScale = 4.2 / size.y;
+
+        scarecrowModel.scale.setScalar(modelScale);
+        scarecrowModel.position.set(
+            -(bounds.min.x + bounds.max.x) * 0.5 * modelScale,
+            -bounds.min.y * modelScale,
+            -(bounds.min.z + bounds.max.z) * 0.5 * modelScale
+        );
+        scarecrowModel.traverse((object) => {
+            if (object.isMesh) {
+                object.castShadow = true;
+                object.receiveShadow = true;
+            }
+        });
+        scarecrowPivot.add(scarecrowModel);
+    },
+    undefined,
+    (error) => console.error('No se pudo cargar el espantapájaros:', error)
+);
 
 // MACETA
 
@@ -483,6 +520,87 @@ createFlower(
     0
 );
 
+// DOS MACETAS ADICIONALES CON FLORES
+
+const extraFlowerStems = [];
+const extraFlowerLeaves = [];
+function createPottedFlower(x, z, petalColor, leafColor) {
+    const pottedPlant = new THREE.Group();
+    pottedPlant.position.set(x, 0, z);
+    gardenGroup.add(pottedPlant);
+
+    const smallPot = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.68, 0.5, 0.92, 24),
+        new THREE.MeshStandardMaterial({ color: 0xb85d39, roughness: 0.85 })
+    );
+    smallPot.position.y = 0.46;
+    pottedPlant.add(smallPot);
+
+    const smallSoil = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.59, 0.59, 0.1, 24),
+        new THREE.MeshStandardMaterial({ color: 0x4b2e1e, roughness: 1 })
+    );
+    smallSoil.position.y = 0.91;
+    pottedPlant.add(smallSoil);
+
+    const stemPivot = new THREE.Group();
+    stemPivot.position.y = 0.94;
+    pottedPlant.add(stemPivot);
+    extraFlowerStems.push(stemPivot);
+
+    const stemMesh = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.07, 0.11, 1.55, 10),
+        new THREE.MeshStandardMaterial({ color: 0x3f7135, roughness: 0.8 })
+    );
+    stemMesh.position.y = 0.78;
+    stemPivot.add(stemMesh);
+
+    const smallLeafMaterial = new THREE.MeshStandardMaterial({
+        color: leafColor,
+        roughness: 0.75
+    });
+    [[-0.28, 0.52, -0.04], [0.27, 0.92, 0.04]].forEach(([lx, ly, lz], index) => {
+        const smallLeaf = new THREE.Mesh(
+            new THREE.SphereGeometry(0.34, 12, 10),
+            smallLeafMaterial
+        );
+        smallLeaf.position.set(lx, ly, lz);
+        smallLeaf.scale.set(1.2, 0.48, 0.55);
+        smallLeaf.rotation.z = index === 0 ? -0.45 : 0.45;
+        smallLeaf.userData.originalColor = leafColor;
+        stemPivot.add(smallLeaf);
+        extraFlowerLeaves.push(smallLeaf);
+    });
+
+    const flowerHead = new THREE.Group();
+    flowerHead.position.y = 1.62;
+    stemPivot.add(flowerHead);
+    const center = new THREE.Mesh(
+        new THREE.SphereGeometry(0.18, 14, 12),
+        new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.65 })
+    );
+    flowerHead.add(center);
+
+    const petalMaterial = new THREE.MeshStandardMaterial({
+        color: petalColor,
+        roughness: 0.65
+    });
+    for (let i = 0; i < 7; i++) {
+        const angle = (Math.PI * 2 * i) / 7;
+        const petal = new THREE.Mesh(
+            new THREE.SphereGeometry(0.17, 10, 10),
+            petalMaterial
+        );
+        petal.position.set(Math.cos(angle) * 0.25, Math.sin(angle) * 0.25, 0);
+        petal.scale.set(0.85, 1.35, 0.65);
+        flowerHead.add(petal);
+    }
+    return pottedPlant;
+}
+
+createPottedFlower(-3.3, 0.8, 0xff69b4, 0x2e8b57);
+createPottedFlower(3.3, 0.8, 0x9b59b6, 0x4f8a3c);
+
 // RAYCASTING
 
 const raycaster =
@@ -608,13 +726,18 @@ leafColorButton.addEventListener(
     function() {
         if (greenLeaves) {
             leafMaterial.color.set(
-                0x6b8e23
+                0xe53935
             );
         } else {
             leafMaterial.color.set(
                 0x2e8b57
             );
         }
+        extraFlowerLeaves.forEach((leaf) => {
+            leaf.material.color.set(
+                greenLeaves ? 0xe53935 : leaf.userData.originalColor
+            );
+        });
         greenLeaves =
             !greenLeaves;
     }
@@ -652,10 +775,14 @@ const lightIntensity =
 lightIntensity.addEventListener(
     "input",
     function() {
-        directionalLight.intensity =
-            Number(
-                lightIntensity.value
-            );
+        const intensity = Number(lightIntensity.value);
+        directionalLight.intensity = intensity;
+        ambientLight.intensity = intensity;
+
+        // Al llegar a cero, también oscurece el fondo para dejar la escena negra.
+        scene.background = daytimeBackground.clone().multiplyScalar(
+            Math.min(intensity, 1)
+        );
     }
 );
 
@@ -673,6 +800,9 @@ leafVisibilityButton.addEventListener(
             !leavesVisible;
         leavesGroup.visible =
             leavesVisible;
+        extraFlowerLeaves.forEach((leaf) => {
+            leaf.visible = leavesVisible;
+        });
         if (leavesVisible) {
             leafVisibilityButton.textContent =
                 "Ocultar hojas";
@@ -699,6 +829,14 @@ function animate() {
             0.04;
         flowersGroup.rotation.y =
             time * 0.5;
+        scarecrowPivot.rotation.z =
+            Math.sin(time * 0.8 + scarecrowPivot.userData.phase) * 0.025;
+        scarecrowPivot.rotation.x =
+            Math.cos(time * 0.65 + scarecrowPivot.userData.phase) * 0.018;
+        extraFlowerStems.forEach((stemPivot, index) => {
+            stemPivot.rotation.z =
+                Math.sin(time * 1.2 + index * 1.8) * 0.055;
+        });
         grassTufts.forEach((tuft) => {
             const breeze = time * 1.8 + tuft.userData.phase;
             tuft.rotation.z = Math.sin(breeze) * 0.08;

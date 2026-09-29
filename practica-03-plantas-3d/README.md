@@ -6,6 +6,8 @@ Este proyecto consiste en la construcción de una planta 3D utilizando Three.js 
 
 La escena representa una planta dentro de una maceta, rodeada de césped y árboles para crear un pequeño jardín. La planta y el entorno se construyeron mediante objetos 3D, transformaciones y grupos jerárquicos.
 
+También incluye dos macetas adicionales con flores y un espantapájaros 3D que se balancea suavemente.
+
 ## Tecnologías utilizadas
 
 - HTML5
@@ -27,6 +29,8 @@ La planta está formada por:
 - Suelo: plano.
 - Césped: grupos de briznas distribuidos alrededor de la planta.
 - Árboles: troncos y copas frondosas alrededor del jardín.
+- Dos macetas pequeñas con tallos, hojas y flores.
+- Espantapájaros cargado desde `models/espantapajaros__scarecrow.glb`.
 
 ## Jerarquía
 
@@ -49,15 +53,19 @@ La escena utiliza:
 - Luz ambiental.
 - Luz direccional.
 
-La intensidad de la luz direccional puede modificarse mediante un control HTML.
+La intensidad de ambas luces puede modificarse mediante un control HTML. Al reducirla a cero, el fondo y los objetos quedan completamente oscuros.
 
 ## Animación
 
-La planta tiene una animación de balanceo suave utilizando `requestAnimationFrame`. El césped y las copas de los árboles se mecen ligeramente para simular una brisa.
+La planta y el espantapájaros tienen una animación de balanceo suave utilizando `requestAnimationFrame`. El césped, las flores de las macetas y las copas de los árboles se mecen ligeramente para simular una brisa.
 
 Las flores también realizan una rotación continua.
 
 La animación puede activarse o detenerse mediante el botón correspondiente.
+
+## Créditos del modelo
+
+El modelo `espantapajaros__scarecrow.glb` es de TioDem, obtenido de [Sketchfab](https://sketchfab.com/3d-models/espantapajaros-scarecrow-80ddf4dab88e49c8bff018b898bb144f), y se distribuye bajo la licencia [Creative Commons Atribución 4.0](https://creativecommons.org/licenses/by/4.0/).
 
 ## Interacción
 
