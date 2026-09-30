@@ -1,102 +1,24 @@
-# Práctica 04 - Animación y Simulación de Crecimiento
+# Práctica 04 - Crecimiento vegetal
 
-## Descripción
+Laboratorio interactivo de crecimiento vegetal construido con Three.js. La escena conserva la planta procedural y el jardín de la práctica anterior, y ahora muestra el desarrollo de tallo, ramas, hojas y flores mediante una animación progresiva.
 
-Este proyecto implementa una simulación de crecimiento de una planta 3D utilizando Three.js.
+## Ejecutar
 
-La planta comienza con un tamaño de cero y crece progresivamente hasta alcanzar su tamaño final. Durante el proceso aparecen primero el tallo, después las ramas, posteriormente las hojas y finalmente las flores.
-
-## Tecnologías utilizadas
-
-- HTML5
-- CSS3
-- JavaScript
-- Three.js
-- OrbitControls
-- requestAnimationFrame
-
-## Características
-
-El proyecto cuenta con una planta formada mediante geometrías primitivas:
-
-- Cilindros para el tallo y las ramas.
-- Esferas para las hojas.
-- Esferas para los pétalos y centro de las flores.
-- Cilindro para la maceta.
-- Plano para el suelo.
-
-## Jerarquía
-
-La planta utiliza THREE.Group para organizar sus elementos.
-
-La estructura principal es:
-
-Planta
-├── Tallo
-│   └── Ramas
-├── Hojas
-└── Flores
-
-Esta jerarquía permite controlar las transformaciones y animaciones de los diferentes componentes.
-
-## Simulación de crecimiento
-
-El crecimiento se controla mediante una variable llamada `growth`, cuyo valor va desde 0 hasta 1.
-
-El crecimiento ocurre por etapas:
-
-1. Crecimiento del tallo.
-2. Crecimiento de las ramas.
-3. Aparición progresiva de las hojas.
-4. Aparición de las flores.
-
-Las transformaciones de escala se utilizan para hacer que los objetos aparezcan progresivamente.
-
-## Animación
-
-La escena utiliza `requestAnimationFrame` para actualizar continuamente la planta.
-
-También se implementó una simulación sencilla de viento utilizando funciones sinusoidales.
-
-El viento provoca movimientos suaves en:
-
-- Tallo.
-- Ramas.
-- Hojas.
-- Flores.
+Abre `index.html` desde un servidor local (por ejemplo, la extensión Live Server de VS Code). Three.js y OrbitControls se cargan desde jsDelivr; el espantapájaros se carga desde `models/espantapajaros__scarecrow.glb`.
 
 ## Controles
 
-El usuario puede modificar la simulación mediante controles HTML:
+- **Velocidad de crecimiento:** ajusta cuánto tarda la planta en completar sus etapas.
+- **Reiniciar crecimiento:** vuelve la planta a su estado inicial.
+- **Pausar / reanudar simulación:** detiene o continúa el crecimiento y las animaciones.
+- **Intensidad del viento:** regula el balanceo de ramas, hojas, césped y copas.
+- **Cambiar color de hojas:** alterna el color de las hojas.
+- **Intensidad de luz:** ajusta la iluminación de la escena.
+- **Reiniciar cámara:** vuelve al encuadre inicial.
 
-- Velocidad de crecimiento.
-- Intensidad del viento.
-- Pausar y reanudar.
-- Reiniciar el crecimiento.
-- Cambiar el color de las hojas.
-- Reiniciar la cámara.
+Haz clic en una parte de la planta para consultar su nombre, porcentaje de crecimiento, geometría y función. El crecimiento se actualiza en el bucle `requestAnimationFrame` con `THREE.Clock` y curvas suaves de interpolación. No se usan shaders externos en esta versión.
 
-## Raycasting
+## Tecnologías
 
-Se implementó `THREE.Raycaster` para detectar cuando el usuario selecciona una parte de la planta.
-
-Al seleccionar un objeto se muestra:
-
-- Nombre.
-- Estado de crecimiento.
-- Tipo de geometría.
-- Función de la parte seleccionada.
-
-## Ejecución
-
-El proyecto debe ejecutarse mediante un servidor local para cargar correctamente los módulos de Three.js.
-
-Se recomienda utilizar Visual Studio Code junto con Live Server.
-
-## Autor
-
-Christopher Rebollar Pelayo
-
-## Práctica
-
-Práctica 04: Animación y Simulación de Crecimiento
+HTML, CSS, JavaScript, Three.js, OrbitControls y GLTFLoader.
+Haz clic en una parte de cualquiera de las plantas para consultar su nombre, porcentaje de crecimiento, geometría y función. El crecimiento se actualiza en el bucle `requestAnimationFrame` con `THREE.Clock` y curvas suaves de interpolación. Las plantas pequeñas de las macetas comparten el mismo ciclo, velocidad, pausa, reinicio, viento y controles de color/visibilidad que la planta principal. No se usan shaders externos en esta versión.

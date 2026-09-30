@@ -1,6 +1,7 @@
 * {
     box-sizing: border-box;
 }
+
 body {
     margin: 0;
     overflow: hidden;
@@ -8,63 +9,52 @@ body {
     background: #111827;
 }
 
-/* PANEL DEL TÍTULO */
-
-#title-panel {
+/* Panel principal de información */
+#info-panel {
     position: absolute;
     top: 15px;
     left: 15px;
     padding: 15px 20px;
-    background:
-        rgba(0, 0, 0, 0.75);
+    background: rgba(0, 0, 0, 0.75);
     color: white;
     border-radius: 10px;
     z-index: 10;
-    min-width: 250px;
-}
-#title-panel h2 {
-    margin: 0 0 5px 0;
-}
-#title-panel p {
-    margin: 0;
-    color: #b8e6c1;
+    min-width: 230px;
 }
 
-/* CONTROLES */
+#info-panel h2 {
+    margin: 0 0 8px 0;
+}
 
+#info-panel p { margin: 0 0 12px; color: #d1d5db; line-height: 1.4; }
+.growth-readout { display: flex; justify-content: space-between; font-size: 13px; }
+.growth-readout strong { color: #86efac; }
+.progress-track { height: 7px; margin-top: 7px; overflow: hidden; border-radius: 99px; background: rgba(255,255,255,.18); }
+#growthProgress { width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #4ade80, #bef264); transition: width .12s linear; }
+
+/* Controles */
 #controls {
     position: absolute;
     top: 15px;
     right: 15px;
     width: 250px;
+    max-height: calc(100vh - 30px);
+    overflow-y: auto;
     padding: 15px;
-    background:
-        rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.75);
     color: white;
     border-radius: 10px;
     z-index: 10;
 }
+
 #controls h3 {
     margin-top: 0;
 }
-#controls label {
-    display: block;
-    margin-top: 12px;
-    margin-bottom: 5px;
-}
-#controls input[type="range"] {
-    width: 100%;
-}
-#controls span {
-    display: block;
-    text-align: center;
-    margin-bottom: 5px;
-    color: #7ee787;
-}
+
 #controls button {
     width: 100%;
     padding: 9px;
-    margin-top: 8px;
+    margin-bottom: 8px;
     border: none;
     border-radius: 6px;
     background: #2d8a4e;
@@ -72,73 +62,53 @@ body {
     cursor: pointer;
     font-size: 14px;
 }
+
 #controls button:hover {
     background: #3aaa63;
 }
 
-/* PANEL DE CRECIMIENTO */
+#controls label {
+    display: block;
 
-#growth-panel {
+    margin-top: 10px;
+    margin-bottom: 5px;
+}
+
+#controls output { float: right; color: #a7f3d0; }
+#lightIntensity, #growthSpeed, #windIntensity {
+    width: 100%;
+}
+
+/* Información de la parte seleccionada */
+#selected-info {
     position: absolute;
     bottom: 15px;
     left: 15px;
     width: 280px;
     padding: 15px;
-    background:
-        rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.8);
     color: white;
     border-radius: 10px;
     z-index: 10;
 }
-#growth-panel h3 {
+
+#selected-info h3 {
     margin-top: 0;
+
     color: #7ee787;
-}
-#growthPercent {
-    color: #7ee787;
-}
-#progress-container {
-    width: 100%;
-    height: 15px;
-    background: #333;
-    border-radius: 10px;
-    overflow: hidden;
-}
-#progress-bar {
-    width: 0%;
-    height: 100%;
-    background: #3aaa63;
-    transition: width 0.1s linear;
-}
-#growthStatus {
-    font-size: 13px;
-    color: #cccccc;
 }
 
-/* PANEL DE INFORMACIÓN */
-
-#info-panel {
-    position: absolute;
-    bottom: 15px;
-    right: 15px;
-    width: 280px;
-    padding: 15px;
-    background:
-        rgba(0, 0, 0, 0.8);
-    color: white;
-    border-radius: 10px;
-    z-index: 10;
-}
-#info-panel h3 {
-    margin-top: 0;
-    color: #7ee787;
-}
-#info-panel p {
+#selected-info p {
     margin: 7px 0;
 }
 
-/* CANVAS */
+@media (max-width: 600px) {
+    #info-panel { top: 10px; left: 10px; right: 10px; min-width: 0; padding: 12px; }
+    #controls { top: 125px; right: 10px; width: min(220px, 55vw); padding: 12px; }
+    #selected-info { left: 10px; bottom: 10px; width: min(260px, 42vw); padding: 12px; font-size: 12px; }
+}
 
+/* Canvas */
 canvas {
     display: block;
 }

@@ -2,119 +2,62 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-    <title>Práctica 04 - Simulación de Crecimiento</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Práctica 04 - Crecimiento vegetal</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-<!-- TÍTULO -->
-
-    <div id="title-panel">
-        <h2>🌱 Simulador de Crecimiento</h2>
-        <p>
-            Planta 3D - Práctica 04
-        </p>
+    <div id="info-panel">
+        <h2>🌱 Laboratorio de crecimiento</h2>
+        <p>Observa cómo la planta se desarrolla y responde al viento.</p>
+        <div class="growth-readout"><span>Crecimiento</span><strong id="growthPercent">0%</strong></div>
+        <div class="progress-track"><div id="growthProgress"></div></div>
     </div>
 
-<!-- CONTROLES -->
-
     <div id="controls">
-        <h3>Controles de crecimiento</h3>
-
-        <!-- Velocidad -->
-
-        <label for="growthSpeed">
-            Velocidad de crecimiento
+        <h3>Controles</h3>
+        <button id="animationButton">
+            Pausar simulación
+        </button>
+        <button id="restartGrowthButton">Reiniciar crecimiento</button>
+        <label for="growthSpeed">Velocidad de crecimiento <output id="growthSpeedValue">1.0×</output></label>
+        <input type="range" id="growthSpeed" min="0.2" max="3" step="0.1" value="1">
+        <label for="windIntensity">Intensidad del viento <output id="windValue">50%</output></label>
+        <input type="range" id="windIntensity" min="0" max="100" step="1" value="50">
+        <button id="leafColorButton">
+            Cambiar color de hojas
+        </button>
+        <button id="resetCameraButton">
+            Reiniciar cámara
+        </button>
+        <label for="lightIntensity">
+            Intensidad de luz
         </label>
         <input
             type="range"
-            id="growthSpeed"
-            min="0.1"
+            id="lightIntensity"
+            min="0"
             max="3"
             step="0.1"
             value="1"
         >
-        <span id="growthSpeedValue">
-            1.0
-        </span>
-
-        <!-- Viento -->
-
-        <label for="windIntensity">
-            Intensidad del viento
-        </label>
-        <input
-            type="range"
-            id="windIntensity"
-            min="0"
-            max="2"
-            step="0.1"
-            value="0.5"
-        >
-        <span id="windValue">
-            0.5
-        </span>
-
-        <!-- Botones -->
-
-        <button id="pauseButton">
-            Pausar crecimiento
-        </button>
-        <button id="resetButton">
-            Reiniciar crecimiento
-        </button>
-        <button id="leafColorButton">
-            Cambiar color de hojas
-        </button>
-        <button id="cameraButton">
-            Reiniciar cámara
+        <button id="leafVisibilityButton">
+            Ocultar hojas
         </button>
     </div>
 
-<!-- ESTADO DE CRECIMIENTO -->
-
-    <div id="growth-panel">
-        <h3>Estado de la planta</h3>
-        <p>
-            Crecimiento:
-            <strong id="growthPercent">
-                0%
-            </strong>
-        </p>
-        <div id="progress-container">
-            <div id="progress-bar"></div>
-        </div>
-        <p id="growthStatus">
-            La planta está comenzando a crecer...
-        </p>
+    <div id="selected-info">
+        <h3>Información de la planta</h3>
+        <p>Selecciona una parte de la planta para ver sus datos.</p>
     </div>
-
-<!-- INFORMACIÓN DE OBJETO SELECCIONADO -->
-
-    <div id="info-panel">
-        <h3>Información</h3>
-        <p>
-            Haz clic sobre una parte de la planta.
-        </p>
-    </div>
-
-<!-- THREE.JS -->
-
     <script type="importmap">
     {
         "imports": {
-            "three":
-            "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-            "three/addons/":
-            "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
         }
     }
     </script>
-    <script
-        type="module"
-        src="main.js">
-    </script>
+    <script type="module" src="main.js"></script>
 </body>
 </html>
