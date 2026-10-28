@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import {
     calculateStress,
     createInitialState,
-    runScenario,
     stepSimulation
 } from './simulation.js';
 
@@ -35,10 +35,11 @@ const initialConditions = { temperatureC: 25, humidityPct: 60, sunHours: 8, wind
 let species = FALLBACK_SPECIES;
 let simulationId = null;
 let simulationRunning = false;
+let viewingHistory = false;
 let state = createInitialState({ initialAgeDays: 1825, initialHeightCm: 250, initialBiomassG: 18000, initialHealthPct: 90, initialSoilMoisturePct: 75 });
 let stateHistory = [];
 let chartGrowth = null;
-let chartComparison = null;
+let chartTimeline = null;
 let selectedObject = null;
 let frameTime = 0;
 let simulationWriteQueue = Promise.resolve();
@@ -216,6 +217,30 @@ const soil = new THREE.Mesh(new THREE.CylinderGeometry(0.92, 0.92, 0.13, 32), ne
 soil.position.y = 0;
 tree.add(soil);
 
+// Usa el espantapájaros incluido en models y normaliza su altura para el visor.
+new GLTFLoader().load(new URL('./models/espantapajaros__scarecrow.glb', import.meta.url).href, (gltf) => {
+    const scarecrow = gltf.scene;
+    const bounds = new THREE.Box3().setFromObject(scarecrow);
+    const size = bounds.getSize(new THREE.Vector3());
+    if (size.y > 0) scarecrow.scale.setScalar(2.8 / size.y);
+    const scaledBounds = new THREE.Box3().setFromObject(scarecrow);
+    scarecrow.position.set(2.8, -scaledBounds.min.y, 1.1);
+    scarecrow.traverse((object) => {
+        if (!object.isMesh) return;
+        object.castShadow = true;
+        object.receiveShadow = true;
+        object.userData = {
+            ...object.userData,
+            name: 'Espantapájaros',
+            geometry: object.geometry?.type ?? 'Modelo 3D',
+            role: 'scarecrow',
+            description: 'Modelo 3D del espantapájaros del huerto.'
+        };
+        clickableParts.push(object);
+    });
+    scene.add(scarecrow);
+}, undefined, (error) => console.warn('No se pudo cargar el modelo del espantapájaros.', error));
+
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 renderer.domElement.addEventListener('click', (event) => {
@@ -235,7 +260,7 @@ function renderInspector(object) {
     const role = object.userData.role;
     const stress = state.stress ?? calculateStress(readEnvironment(), state.nutrients, species);
     const relevantStress = role === 'leaf' ? stress.nutrients : role === 'fruit' ? Math.max(stress.water, stress.heat) : stress.total;
-    const contribution = role === 'fruit' ? 0.035 : role === 'leaf' ? 0.008 : role === 'branch' ? 0.06 : 0.2;
+    const contribution = role === 'fruit' ? 0.035 : role === 'leaf' ? 0.008 : role === 'branch' ? 0.06 : role === 'scarecrow' ? 0 : 0.2;
     const panel = $('selectedInfo');
     panel.innerHTML = `<span class="eyebrow">INSPECTOR 3D</span><h2>${object.userData.name}</h2><p>${object.userData.description}</p><div class="selected-metrics"><div><span>Especie</span><strong>${species.nombre_cientifico}</strong></div><div><span>Crecimiento</span><strong>${formatNumber(state.growthPct ?? 0)} %</strong></div><div><span>Geometría</span><strong>${object.userData.geometry}</strong></div><div><span>Estrés asociado</span><strong>${formatNumber(relevantStress)} / 100</strong></div><div><span>Biomasa estimada</span><strong>${formatNumber(state.biomassG * contribution, 0)} g</strong></div><div><span>Frutos estimados</span><strong>${formatNumber(state.fruits)}</strong></div></div>`;
 }
@@ -315,7 +340,7 @@ function setMeter(name, value) {
 
 function renderState({ record = false } = {}) {
     const environment = readEnvironment();
-    state.stress = calculateStress({ ...environment, soilMoisturePct: state.soilMoisturePct }, state.nutrients, species);
+    if (!viewingHistory) state.stress = calculateStress({ ...environment, soilMoisturePct: state.soilMoisturePct }, state.nutrients, species);
     $('dayBadge').textContent = `Día ${formatNumber(state.day)}`;
     $('heightKpi').textContent = `${formatNumber(state.heightCm)} cm`;
     $('biomassKpi').textContent = `${formatNumber(state.biomassG / 1000, 1)} kg`;
@@ -344,8 +369,12 @@ function renderState({ record = false } = {}) {
     if (selectedObject) renderInspector(selectedObject);
     if (record) {
         const point = { ...state, stress: { ...state.stress } };
-        stateHistory.push(point);
+        const existingIndex = stateHistory.findIndex((entry) => entry.day === point.day);
+        if (existingIndex >= 0) stateHistory[existingIndex] = point;
+        else stateHistory.push(point);
+        stateHistory.sort((a, b) => a.day - b.day);
         addGrowthPoint(point);
+        updateTimelineControls();
     }
 }
 
@@ -368,13 +397,17 @@ function initCharts() {
         ] },
         options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { labels: { boxWidth: 9, usePointStyle: true, pointStyle: 'circle', font: { size: 9 } } } }, scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 5, font: { size: 8 } } }, y: { beginAtZero: true, grid: { color: 'rgba(220,240,220,.07)' }, ticks: { font: { size: 8 } } }, y1: { position: 'right', beginAtZero: true, grid: { display: false }, ticks: { font: { size: 8 } } } } }
     });
-    chartComparison = new Chart($('comparisonChart'), {
+    chartTimeline = new Chart($('timelineChart'), {
         type: 'line',
         data: { labels: [], datasets: [
-            { label: 'A · Riego actual', data: [], borderColor: '#a8d65e', tension: .32, pointRadius: 0 },
-            { label: 'B · Riego alternativo', data: [], borderColor: '#71bcd2', tension: .32, pointRadius: 0 }
+            { label: 'Biomasa (kg)', data: [], borderColor: '#a8d65e', backgroundColor: 'rgba(168,214,94,.1)', fill: true, tension: .32, pointRadius: 1, pointHoverRadius: 4 }
         ] },
-        options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { labels: { boxWidth: 8, usePointStyle: true, font: { size: 8 } } } }, scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 5, font: { size: 8 } } }, y: { beginAtZero: true, grid: { color: 'rgba(220,240,220,.07)' }, ticks: { font: { size: 8 } } } } }
+        options: {
+            responsive: true, maintainAspectRatio: false, animation: false,
+            onClick: (_event, elements) => { if (elements.length) seekTimeline(elements[0].index); },
+            plugins: { legend: { display: false } },
+            scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 5, font: { size: 8 } } }, y: { beginAtZero: true, grid: { color: 'rgba(220,240,220,.07)' }, ticks: { font: { size: 8 } } } }
+        }
     });
 }
 
@@ -383,19 +416,74 @@ function addGrowthPoint(point) {
     chartGrowth.data.labels.push(point.day);
     chartGrowth.data.datasets[0].data.push(Number((point.biomassG / 1000).toFixed(2)));
     chartGrowth.data.datasets[1].data.push(Number(point.heightCm.toFixed(1)));
-    if (chartGrowth.data.labels.length > 54) {
-        chartGrowth.data.labels.shift();
-        chartGrowth.data.datasets.forEach((dataset) => dataset.data.shift());
+    if (chartTimeline) {
+        chartTimeline.data.labels.push(point.day);
+        chartTimeline.data.datasets[0].data.push(Number((point.biomassG / 1000).toFixed(2)));
+        chartTimeline.update('none');
     }
     chartGrowth.update('none');
 }
 
 function resetGrowthChart() {
     if (!chartGrowth) return;
-    chartGrowth.data.labels = [0];
-    chartGrowth.data.datasets[0].data = [state.biomassG / 1000];
-    chartGrowth.data.datasets[1].data = [state.heightCm];
+    const hasHistory = stateHistory.length > 0;
+    chartGrowth.data.labels = hasHistory ? [] : [state.day];
+    chartGrowth.data.datasets[0].data = hasHistory ? [] : [state.biomassG / 1000];
+    chartGrowth.data.datasets[1].data = hasHistory ? [] : [state.heightCm];
     chartGrowth.update('none');
+    if (chartTimeline) {
+        chartTimeline.data.labels = hasHistory ? [] : [state.day];
+        chartTimeline.data.datasets[0].data = hasHistory ? [] : [Number((state.biomassG / 1000).toFixed(2))];
+        chartTimeline.update('none');
+    }
+}
+
+function updateTimelineControls() {
+    const slider = $('timelineInput');
+    if (!slider) return;
+    const selectedIndex = Math.max(0, stateHistory.findIndex((point) => point.day === state.day));
+    slider.max = String(Math.max(0, stateHistory.length - 1));
+    slider.value = String(selectedIndex);
+    $('timelineOutput').textContent = `Día ${formatNumber(state.day)}`;
+    $('timelineHint').textContent = stateHistory.length > 1
+        ? `${stateHistory.length} puntos disponibles · arrastra para volver a un día anterior o avanzar.`
+        : 'Avanza la simulación para generar puntos en la línea de tiempo.';
+}
+
+function seekTimeline(index) {
+    if (!stateHistory.length) return;
+    const point = stateHistory[clamp(Number(index), 0, stateHistory.length - 1)];
+    if (!point) return;
+    simulationRunning = false;
+    viewingHistory = true;
+    tickAccumulator = 0;
+    const startAgeDays = state.startAgeDays ?? 1825;
+    state = {
+        ...state,
+        ...point,
+        stress: { ...point.stress, total: point.stress.total ?? (point.stress.water + point.stress.heat + point.stress.light + point.stress.nutrients) / 4 },
+        ageDays: startAgeDays + point.day,
+        stage: stageName(startAgeDays + point.day),
+        growthPct: point.growthPct ?? 100,
+        icr: point.icr ?? 0
+    };
+    const latestDay = stateHistory[stateHistory.length - 1]?.day ?? point.day;
+    $('runButton').textContent = point.day < latestDay ? '▶ Reanudar desde aquí' : '▶ Reanudar';
+    const labels = stateHistory.map((entry) => entry.day);
+    if (chartGrowth) {
+        chartGrowth.data.labels = labels;
+        chartGrowth.data.datasets[0].data = stateHistory.map((entry) => Number((entry.biomassG / 1000).toFixed(2)));
+        chartGrowth.data.datasets[1].data = stateHistory.map((entry) => Number(entry.heightCm.toFixed(1)));
+        chartGrowth.update('none');
+    }
+    if (chartTimeline) {
+        chartTimeline.data.labels = labels;
+        chartTimeline.data.datasets[0].data = stateHistory.map((entry) => Number((entry.biomassG / 1000).toFixed(2)));
+        chartTimeline.update('none');
+    }
+    $('timelineInput').value = String(stateHistory.indexOf(point));
+    $('timelineOutput').textContent = `Día ${formatNumber(point.day)}`;
+    renderState();
 }
 
 // ── API REST, persistencia e historial ──
@@ -419,7 +507,7 @@ function setApiStatus(connected, text) {
 async function connectApi() {
     try {
         await apiRequest('/health');
-        setApiStatus(true, 'API y MariaDB conectadas');
+        setApiStatus(true, 'API y MySQL conectados');
     } catch (error) {
         setApiStatus(false, 'Sin conexión · modo local');
         console.warn('API no disponible; se mantiene la simulación local.', error);
@@ -552,6 +640,9 @@ async function loadStoredSimulation() {
             $('speciesSelect').innerHTML = `<option value="${species.id}">${escapeHtml(species.nombre_comun)} · ${escapeHtml(species.nombre_cientifico)}</option>`;
         }
         simulationId = id;
+        simulationRunning = false;
+        viewingHistory = false;
+        $('runButton').textContent = '▶ Reanudar';
         $('modelSelect').value = saved.modelo;
         $('runName').value = saved.nombre;
         setControlValue('durationInput', saved.dias_planeados);
@@ -595,13 +686,20 @@ async function loadStoredSimulation() {
                 day: Number(measurement.dia), heightCm: Number(measurement.altura_cm), biomassG: Number(measurement.biomasa_g),
                 leaves: Number(measurement.hojas), branches: Number(measurement.ramas), flowers: Number(measurement.flores), fruits: Number(measurement.frutos),
                 healthPct: Number(measurement.salud_pct), soilMoisturePct: Number(measurement.hidratacion_pct),
+                nutrients: parseStoredJson(measurement.nutrientes ?? conditions.nutrientes),
+                ageDays: Number(saved.edad_inicial_dias) + Number(measurement.dia),
+                fruitDevelopment: clamp((Math.min(Number(measurement.dia), Math.max(0, Number(saved.edad_inicial_dias) + Number(measurement.dia) - 1095)) - 28) / 120, 0, 1),
+                fruitPotential: Math.max(Number(measurement.frutos), 300),
+                stage: stageName(Number(saved.edad_inicial_dias) + Number(measurement.dia)), growthPct: 100, icr: 0,
                 stress: {
                     water: Number(measurement.estres_hidrico), heat: Number(measurement.estres_termico),
-                    light: Number(measurement.estres_luminico), nutrients: Number(measurement.estres_nutricional)
+                    light: Number(measurement.estres_luminico), nutrients: Number(measurement.estres_nutricional),
+                    total: (Number(measurement.estres_hidrico) + Number(measurement.estres_termico) + Number(measurement.estres_luminico) + Number(measurement.estres_nutricional)) / 4
                 }
             }));
             resetGrowthChart();
             stateHistory.forEach(addGrowthPoint);
+            updateTimelineControls();
             state.recommendation = saved.decisiones?.[0]
                 ? { priority: saved.decisiones[0].prioridad, text: saved.decisiones[0].recomendacion }
                 : { priority: 'info', text: 'Corrida cargada; avanza un día para generar una recomendación actualizada.' };
@@ -639,6 +737,23 @@ async function loadReports() {
 // ── Motor diario, escenarios A/B y exportación ──
 async function beginSimulation() {
     if (state.day >= number('durationInput')) resetSimulation();
+    const laterPoints = stateHistory.filter((point) => point.day > state.day);
+    if (laterPoints.length) {
+        if (apiOnline && simulationId) {
+            try {
+                await simulationWriteQueue;
+                await apiRequest(`/simulaciones/${simulationId}/mediciones/despues/${state.day}`, { method: 'DELETE' });
+            } catch (error) {
+                console.error('No se pudo recortar la línea de tiempo guardada.', error);
+                return;
+            }
+        }
+        stateHistory = stateHistory.filter((point) => point.day <= state.day);
+        resetGrowthChart();
+        stateHistory.forEach(addGrowthPoint);
+        updateTimelineControls();
+    }
+    viewingHistory = false;
     if (apiOnline && !simulationId) {
         $('runButton').disabled = true;
         $('runButton').textContent = 'Guardando…';
@@ -652,6 +767,10 @@ async function beginSimulation() {
     }
     simulationRunning = true;
     $('runButton').textContent = 'Ⅱ Pausar';
+    if (!stateHistory.some((point) => point.day === state.day)) {
+        renderState({ record: true });
+        persistCurrentState();
+    }
 }
 
 function advanceDay() {
@@ -665,11 +784,9 @@ function advanceDay() {
         }).catch((error) => console.warn('No se pudo guardar una recomendación.', error));
     }
     const duration = number('durationInput');
+    renderState({ record: true });
     if (state.day % 7 === 0 || state.day >= duration) {
-        renderState({ record: true });
         persistCurrentState();
-    } else {
-        renderState();
     }
     if (state.day >= duration) {
         simulationRunning = false;
@@ -680,6 +797,7 @@ function advanceDay() {
 
 function resetSimulation() {
     simulationRunning = false;
+    viewingHistory = false;
     simulationId = null;
     state = createInitialState(readInitial());
     state.stage = stageName(state.ageDays);
@@ -688,30 +806,8 @@ function resetSimulation() {
     stateHistory = [];
     resetGrowthChart();
     $('runButton').textContent = '▶ Iniciar';
-    $('winnerBanner').hidden = true;
-    $('winnerBanner').textContent = '';
+    updateTimelineControls();
     renderState();
-}
-
-function compareScenarios() {
-    const environmentA = readEnvironment();
-    const environmentB = { ...environmentA, irrigationLWeek: number('waterBInput') };
-    const configuration = { species, model: $('modelSelect').value, days: clamp(number('durationInput'), 7, 3650), initial: readInitial(), parameters: getModelParameters() };
-    const resultA = runScenario({ ...configuration, environment: environmentA });
-    const resultB = runScenario({ ...configuration, environment: environmentB });
-    const series = (result) => result.measurements.map((point) => point.fruits);
-    const labels = resultA.measurements.map((point) => point.day);
-    if (chartComparison) {
-        chartComparison.data.labels = labels;
-        chartComparison.data.datasets[0].data = series(resultA);
-        chartComparison.data.datasets[1].data = series(resultB);
-        chartComparison.update('none');
-    }
-    const score = (result) => result.state.biomassG + result.state.fruits * 100;
-    const winner = score(resultA) >= score(resultB) ? 'A' : 'B';
-    const best = winner === 'A' ? resultA.state : resultB.state;
-    $('winnerBanner').hidden = false;
-    $('winnerBanner').textContent = `Escenario ${winner} recomendado · ${formatNumber(best.fruits)} frutos · ${formatNumber(best.biomassG / 1000, 1)} kg de biomasa. Puntuación: biomasa (g) + 100 × frutos.`;
 }
 
 function exportCsv() {
@@ -737,7 +833,6 @@ function bindControls() {
         ['lightInput', 'lightOutput', (value) => `${value} h/día`],
         ['co2Input', 'co2Output', (value) => `${value} ppm`],
         ['waterInput', 'waterOutput', (value) => `${value} L`],
-        ['waterBInput', 'waterBOutput', (value) => `${value} L`],
         ['windInput', 'windOutput', (value) => `${value} km/h`],
         ['phInput', 'phOutput', (value) => Number(value).toFixed(1)],
         ['speedInput', 'speedOutput', (value) => `${value} día${Number(value) === 1 ? '' : 's'}/s`]
@@ -758,7 +853,7 @@ function bindControls() {
         }
     });
     $('restartButton').addEventListener('click', resetSimulation);
-    $('compareButton').addEventListener('click', compareScenarios);
+    $('timelineInput').addEventListener('input', (event) => seekTimeline(event.target.value));
     $('loadHistoryButton').addEventListener('click', loadStoredSimulation);
     $('refreshHistory').addEventListener('click', refreshHistory);
     $('refreshReports').addEventListener('click', loadReports);

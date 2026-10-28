@@ -15,7 +15,7 @@ if (in_array($origin, $allowedOrigins, true)) {
     header('Access-Control-Allow-Origin: ' . $origin);
     header('Vary: Origin');
 }
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 header('Content-Type: application/json; charset=utf-8');
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 Flight::route('GET /api/health', function () {
     try {
         db()->query('SELECT 1');
-        Flight::json(['ok' => true, 'database' => 'connected']);
+        Flight::json(['ok' => true, 'database' => 'MySQL conectado']);
     } catch (Throwable $error) {
         apiError($error);
     }
@@ -170,6 +170,29 @@ Flight::route('POST /api/simulaciones/@id:[0-9]+/mediciones', function (string $
         $update->execute([(int)$body['dia'], (int)$body['dia'], $id]);
         Flight::json(['ok' => true, 'dia' => (int)$body['dia']], 201);
     } catch (Throwable $error) {
+        apiError($error);
+    }
+});
+
+Flight::route('DELETE /api/simulaciones/@id:[0-9]+/mediciones/despues/@dia:[0-9]+', function (string $id, string $day) {
+    try {
+        $pdo = db();
+        $pdo->beginTransaction();
+        $exists = $pdo->prepare('SELECT id FROM simulaciones WHERE id = ? FOR UPDATE');
+        $exists->execute([(int)$id]);
+        if (!$exists->fetch()) {
+            $pdo->rollBack();
+            Flight::json(['error' => 'Simulación no encontrada.'], 404);
+            return;
+        }
+        $delete = $pdo->prepare('DELETE FROM mediciones WHERE simulacion_id = ? AND dia > ?');
+        $delete->execute([(int)$id, (int)$day]);
+        $update = $pdo->prepare("UPDATE simulaciones SET dia_actual = ?, estado = 'ejecutando' WHERE id = ?");
+        $update->execute([(int)$day, (int)$id]);
+        $pdo->commit();
+        Flight::json(['ok' => true, 'dia' => (int)$day, 'medicionesEliminadas' => $delete->rowCount()]);
+    } catch (Throwable $error) {
+        if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
         apiError($error);
     }
 });

@@ -8,7 +8,7 @@ Extensión del visor Three.js de la Práctica 04 para simular el crecimiento y l
 - `database/schema.sql` define especies, plantas, simulaciones, mediciones y decisiones.
 - `database/seed.sql` carga especies de referencia y una corrida de ejemplo con mediciones.
 - `api/` contiene rutas FlightPHP para catálogo, simulaciones, mediciones, decisiones e indicadores de reportes.
-- `simulation.js` implementa los cuatro modelos, índices de estrés, cosecha aproximada y escenarios A/B.
+- `simulation.js` implementa los cuatro modelos, índices de estrés y cosecha aproximada.
 - La interfaz consume la API con `fetch`, presenta KPIs, gráficas, historial y exportación CSV/impresión PDF.
 
 ## Modelo de limonero
@@ -53,6 +53,7 @@ Rutas disponibles:
 | `GET /api/simulaciones/{id}` | Devuelve una simulación, mediciones y decisiones |
 | `POST /api/simulaciones` | Crea una planta y una simulación |
 | `POST /api/simulaciones/{id}/mediciones` | Persiste el estado de un día simulado |
+| `DELETE /api/simulaciones/{id}/mediciones/despues/{dia}` | Recorta mediciones futuras al reanudar desde un día anterior |
 | `POST /api/simulaciones/{id}/decisiones` | Guarda una recomendación |
 | `GET /api/reportes/resumen` | Consulta top de biomasa y días hasta primeros frutos |
 
@@ -60,4 +61,4 @@ El cliente Three.js consume estas rutas con `fetch`. La API usa PDO con consulta
 
 ## Cliente Three.js
 
-Abre `index.html` mediante Live Server después de iniciar la API. El selector mantiene Citrus limon como especie enfocada. El panel permite cambiar modelo, clima, riego, nutrientes, pH y parámetros genéticos; iniciar y guardar corridas; comparar riego A/B; revisar reportes; cargar el historial; exportar CSV o imprimir un reporte en PDF. Three.js, OrbitControls y Chart.js se cargan desde CDN.
+Abre `index.html` mediante Live Server después de iniciar la API. El selector mantiene Citrus limon como especie enfocada. El panel permite cambiar modelo, clima, riego, nutrientes, pH y parámetros genéticos; iniciar y guardar corridas; recorrer la línea de tiempo para volver a un día guardado y reanudar desde allí; revisar reportes; cargar el historial; exportar CSV o imprimir un reporte en PDF. El visor incluye un espantapájaros junto al limonero. Three.js, OrbitControls y Chart.js se cargan desde CDN.
