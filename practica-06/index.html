@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#17281f">
+    <title>Práctica 06 · Observatorio global de cultivos</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand">
+            <span class="brand-mark">L</span>
+            <div><strong>BioCultivo</strong><span>Práctica 06 · Observatorio global</span></div>
+        </div>
+        <nav class="view-tabs" aria-label="Vistas">
+            <button class="view-tab active" data-view="simulator">Simulador</button>
+            <button class="view-tab" data-view="observatory">Observatorio</button>
+            <button class="view-tab" data-view="reports">Reportes</button>
+        </nav>
+        <div class="connection"><i id="connectionDot"></i><span id="connectionState">Conectando a la API…</span></div>
+    </header>
+
+    <main>
+        <section id="simulatorView" class="workspace active">
+            <aside class="panel left-panel">
+                <div class="section-heading"><div><span class="eyebrow">ESCENARIO</span><h1>Árbol de limón</h1></div><span class="species-icon">🍋</span></div>
+                <label class="field-label" for="speciesSelect">Especie del catálogo</label>
+                <select id="speciesSelect"><option value="">Cargando Citrus limon…</option></select>
+
+                <div class="control-section">
+                    <h2>Modelo y corrida</h2>
+                    <label class="field-label" for="modelSelect">Modelo de crecimiento</label>
+                    <select id="modelSelect">
+                        <option value="logistico">Logístico (Verhulst)</option>
+                        <option value="gompertz">Gompertz</option>
+                        <option value="exponencial">Exponencial</option>
+                        <option value="lineal">Lineal</option>
+                    </select>
+                    <div class="field-row">
+                        <label class="field-label" for="durationInput">Duración (días)</label>
+                        <input id="durationInput" type="number" min="7" max="3650" step="7" value="365">
+                    </div>
+                    <label class="field-label" for="runName">Nombre de la simulación</label>
+                    <input id="runName" type="text" maxlength="120" value="Limonero · riego adecuado">
+                    <div class="button-row">
+                        <button id="runButton" class="button primary">▶ Iniciar</button>
+                        <button id="restartButton" class="button secondary">Reiniciar</button>
+                    </div>
+                    <label class="field-label" for="speedInput">Velocidad <output id="speedOutput">1 día/s</output></label>
+                    <input id="speedInput" type="range" min="1" max="20" value="1">
+                </div>
+
+                <div class="control-section">
+                    <h2>Condiciones ambientales</h2>
+                    <label class="field-label" for="temperatureInput">Temperatura <output id="temperatureOutput">25 °C</output></label>
+                    <input id="temperatureInput" type="range" min="-5" max="45" value="25">
+                    <label class="field-label" for="humidityInput">Humedad ambiental <output id="humidityOutput">60 %</output></label>
+                    <input id="humidityInput" type="range" min="10" max="100" step="5" value="60">
+                    <label class="field-label" for="lightInput">Horas de sol <output id="lightOutput">8 h/día</output></label>
+                    <input id="lightInput" type="range" min="0" max="14" value="8">
+                    <label class="field-label" for="co2Input">CO₂ ambiental <output id="co2Output">420 ppm</output></label>
+                    <input id="co2Input" type="range" min="300" max="1000" step="10" value="420">
+                    <label class="field-label" for="waterInput">Riego semanal <output id="waterOutput">80 L</output></label>
+                    <input id="waterInput" type="range" min="0" max="150" step="5" value="80">
+                    <label class="field-label" for="windInput">Viento <output id="windOutput">10 km/h</output></label>
+                    <input id="windInput" type="range" min="0" max="60" step="5" value="10">
+                    <label class="field-label" for="phInput">pH del suelo <output id="phOutput">6.5</output></label>
+                    <input id="phInput" type="range" min="4" max="9" step="0.1" value="6.5">
+                </div>
+
+                <div class="control-section compact-grid">
+                    <h2>Nutrientes y genética</h2>
+                    <label>N · Nitrógeno<input id="nitrogenInput" type="number" min="0" max="100" value="70"></label>
+                    <label>P · Fósforo<input id="phosphorusInput" type="number" min="0" max="100" value="70"></label>
+                    <label>K · Potasio<input id="potassiumInput" type="number" min="0" max="100" value="70"></label>
+                    <label>Fe · Hierro<input id="ironInput" type="number" min="0" max="100" value="70"></label>
+                    <label>r · tasa<input id="rateInput" type="number" min="0.0001" max="0.02" step="0.0001" value="0.0025"></label>
+                    <label>K · carga<input id="capacityInput" type="number" min="0.1" max="1" step="0.1" value="1"></label>
+                </div>
+
+            </aside>
+
+            <section class="scene-column">
+                <div id="scene" aria-label="Visor 3D del limonero"></div>
+                <div class="scene-caption"><span>●</span> Visor 3D · arrastra para rotar · rueda para acercar</div>
+                <section id="selectedInfo" class="selected-card">
+                    <span class="eyebrow">INSPECTOR 3D</span>
+                    <h2>Selecciona una parte del limonero</h2>
+                    <p>Haz clic en el tronco, una rama, una hoja o un limón para consultar sus métricas.</p>
+                </section>
+                <div class="environment-badges"><span id="stageBadge">Etapa: adulto</span><span id="stressBadge">Estrés: 0 / 100</span></div>
+            </section>
+
+            <aside class="panel right-panel">
+                <div class="section-heading"><div><span class="eyebrow">SEGUIMIENTO</span><h2>Estado actual</h2></div><span id="dayBadge" class="day-badge">Día 0</span></div>
+                <div class="kpi-grid">
+                    <article class="kpi"><span>Altura</span><strong id="heightKpi">250 cm</strong></article>
+                    <article class="kpi"><span>Biomasa</span><strong id="biomassKpi">18.0 kg</strong></article>
+                    <article class="kpi"><span>Salud</span><strong id="healthKpi">90 %</strong></article>
+                    <article class="kpi"><span>Hidratación</span><strong id="waterKpi">70 %</strong></article>
+                    <article class="kpi"><span>Hojas / ramas</span><strong id="partsKpi">8 / 3</strong></article>
+                    <article class="kpi"><span>ICR diario</span><strong id="icrKpi">0.00 %</strong></article>
+                    <article class="kpi"><span>Flores / frutos</span><strong id="fruitKpi">0 / 0</strong></article>
+                    <article class="kpi"><span>Para cosecha</span><strong id="harvestKpi">—</strong></article>
+                </div>
+
+                <section class="stress-section">
+                    <div class="subheading"><h3>Índices de estrés</h3><span>0–100</span></div>
+                    <div class="stress-row"><span>Hídrico</span><div class="meter"><i id="waterStressBar"></i></div><b id="waterStressValue">0</b></div>
+                    <div class="stress-row"><span>Térmico</span><div class="meter"><i id="heatStressBar"></i></div><b id="heatStressValue">0</b></div>
+                    <div class="stress-row"><span>Lumínico</span><div class="meter"><i id="lightStressBar"></i></div><b id="lightStressValue">0</b></div>
+                    <div class="stress-row"><span>Nutricional</span><div class="meter"><i id="nutrientStressBar"></i></div><b id="nutrientStressValue">0</b></div>
+                </section>
+
+                <section id="recommendationCard" class="recommendation-card">
+                    <span class="eyebrow">PRÓXIMA ACCIÓN</span>
+                    <p id="recommendationText">Inicia una simulación para recibir recomendaciones de manejo.</p>
+                </section>
+
+                <section class="chart-section">
+                    <div class="subheading"><h3>Curva de crecimiento</h3><span>biomasa · g</span></div>
+                    <div class="chart-wrap"><canvas id="growthChart"></canvas></div>
+                </section>
+                <section class="chart-section">
+                    <div class="subheading"><h3>Línea de tiempo</h3><span>biomasa · kg</span></div>
+                    <div class="chart-wrap short"><canvas id="timelineChart"></canvas></div>
+                    <label class="field-label timeline-label" for="timelineInput"><span>Recorrer la simulación</span><output id="timelineOutput">Día 0</output></label>
+                    <input id="timelineInput" type="range" min="0" max="0" step="1" value="0" aria-label="Día de la simulación">
+                    <p id="timelineHint" class="hint">Inicia una corrida para crear la línea de tiempo.</p>
+                </section>
+
+                <section class="control-section history-section">
+                    <div class="subheading"><h3>Historial</h3><button id="refreshHistory" class="link-button">Actualizar</button></div>
+                    <select id="historySelect"><option value="">Sin simulaciones cargadas</option></select>
+                    <button id="loadHistoryButton" class="button secondary full">Cargar corrida guardada</button>
+                </section>
+                <div class="export-row">
+                    <button id="csvButton" class="button secondary">Exportar CSV</button>
+                    <button id="pdfButton" class="button secondary">Imprimir / PDF</button>
+                </div>
+            </aside>
+        </section>
+
+        <section id="observatoryView" class="workspace geo-workspace">
+            <aside class="panel left-panel geo-controls">
+                <div class="section-heading"><div><span class="eyebrow">EXPLORACIÓN GLOBAL</span><h1>Observatorio</h1></div><span class="species-icon">🌐</span></div>
+                <p class="hint">Haz clic en el globo para consultar clima, suelo y biodiversidad reales.</p>
+                <div class="control-section">
+                    <h2>Coordenadas</h2>
+                    <label class="field-label" for="geoLatitude">Latitud</label><input id="geoLatitude" type="number" min="-90" max="90" step="0.001" value="14.291">
+                    <label class="field-label" for="geoLongitude">Longitud</label><input id="geoLongitude" type="number" min="-180" max="180" step="0.001" value="-89.895">
+                    <button id="geoSearchButton" class="button primary full">Consultar ubicación</button>
+                </div>
+                <div class="control-section">
+                    <h2>Especie observada</h2>
+                    <select id="geoSpeciesSelect"><option value="1">Limonero · Citrus limon</option></select>
+                    <p id="geoOccurrenceStatus" class="geo-point-status">Cargando puntos de presencia registrados para esta especie…</p>
+                    <p class="geo-hotspot-heading">Zonas con más registros</p>
+                    <div class="button-row geo-hotspot-row">
+                        <button id="geoHotspot1" class="button secondary geo-hotspot-button" disabled>Buscando zona…</button>
+                        <button id="geoHotspot2" class="button secondary geo-hotspot-button" disabled>Buscando zona…</button>
+                    </div>
+                </div>
+                <div class="control-section">
+                    <h2>Comparar ubicaciones A/B</h2>
+                    <div class="button-row"><button id="geoSaveA" class="button secondary">Guardar como A</button><button id="geoSaveB" class="button secondary">Guardar como B</button></div>
+                    <div id="geoCompareResult" class="geo-compare-result">Guarda dos sitios para comparar sus datos.</div>
+                </div>
+                <div class="control-section">
+                    <h2>Simular este lugar</h2>
+                    <p class="hint">Usa los datos disponibles para precargar las condiciones del simulador.</p>
+                    <button id="geoUseSimulation" class="button secondary full" disabled>Usar datos en simulación</button>
+                </div>
+                <div class="control-section">
+                    <button id="geoSaveAnalysis" class="button secondary full" disabled>Guardar análisis en MySQL</button>
+                    <span id="geoSaveStatus" class="hint"></span>
+                </div>
+            </aside>
+            <section class="geo-scene-column">
+                <div id="globeScene" aria-label="Globo 3D interactivo; haz clic para seleccionar coordenadas"></div>
+                <div class="scene-caption"><span>●</span> Globo 3D · clic para explorar · arrastra para rotar</div>
+                <div class="geo-legend"><span><i class="legend-site"></i> Sitio consultado</span><span><i class="legend-gbif"></i> Ocurrencias GBIF · clic para explorar</span></div>
+                <div id="geoLoading" class="geo-loading" hidden>Consultando fuentes públicas…</div>
+            </section>
+            <aside class="panel right-panel geo-details">
+                <div class="section-heading"><div><span class="eyebrow">DATOS REALES</span><h2 id="geoPlaceTitle">Selecciona un punto</h2></div></div>
+                <div id="geoDataStatus" class="geo-status">Open-Meteo · NASA POWER · SoilGrids · GBIF</div>
+                <section class="geo-context-card"><span>ÁREA SELECCIONADA</span><strong id="geoAreaName">Elige un punto del globo</strong><p id="geoAreaDetails">Aquí aparecerá la localidad, región y país más cercanos, además de las coordenadas y altitud.</p></section>
+                <div class="geo-kpi-grid">
+                    <article class="kpi"><span>Temperatura actual</span><strong id="geoTemp">—</strong></article>
+                    <article class="kpi"><span>Lluvia anual</span><strong id="geoRain">—</strong></article>
+                    <article class="kpi"><span>Radiación solar media</span><strong id="geoRadiation">—</strong></article>
+                    <article class="kpi"><span>Idoneidad estimada</span><strong id="geoSuitability">—</strong></article>
+                    <article class="kpi"><span>pH suelo (0–5 cm)</span><strong id="geoPh">—</strong></article>
+                    <article class="kpi"><span>Arcilla / arena</span><strong id="geoTexture">—</strong></article>
+                    <article class="kpi"><span>Ocurrencias GBIF</span><strong id="geoGbifCount">—</strong></article>
+                    <article class="kpi"><span>Humedad actual</span><strong id="geoHumidity">—</strong></article>
+                </div>
+                <section class="geo-rank-section"><div class="subheading"><h3>Idoneidad por especie</h3><span>estimación inicial</span></div><div id="geoRanking" class="geo-ranking"><p>Consulta un punto para calcular el ranking.</p></div></section>
+                <section class="geo-rank-section"><div class="subheading"><h3>Recomendaciones</h3><span>según umbrales</span></div><div id="geoRules" class="geo-rules"><p>Sin recomendaciones todavía.</p></div></section>
+                <div class="geo-attribution">Los puntos luminosos muestran registros geográficos publicados en GBIF; clic en uno para consultar esa área. No representan el límite completo de distribución ni confirman que la planta siga presente en cada sitio. Localidades: © OpenStreetMap contributors. Clima: Open-Meteo y NASA POWER; suelo: ISRIC SoilGrids; biodiversidad: GBIF.</div>
+            </aside>
+        </section>
+
+        <section id="reportsView" class="reports-view">
+            <div class="reports-header"><div><span class="eyebrow">ANALÍTICA DE CULTIVO</span><h1>Reportes de simulación</h1><p>Resumen persistido en MySQL para apoyar decisiones agronómicas.</p></div><button id="refreshReports" class="button primary">Actualizar reportes</button></div>
+            <div class="report-kpis"><article class="report-card"><span>Especie con mayor eficiencia</span><strong id="efficientSpecies">—</strong><small id="efficiencyValue">Biomasa media: —</small></article><article class="report-card"><span>Días promedio a madurez</span><strong id="maturityAverage">—</strong><small>Según primera medición con frutos</small></article><article class="report-card"><span>Corridas guardadas</span><strong id="runCount">—</strong><small>Persistidas en la base de datos</small></article></div>
+            <section class="report-table-card"><div class="subheading"><h2>Top 5 simulaciones por biomasa</h2><span>biomasa máxima registrada</span></div><div class="table-scroll"><table><thead><tr><th>#</th><th>Simulación</th><th>Especie</th><th>Biomasa máxima</th><th>Frutos</th></tr></thead><tbody id="topRunsBody"><tr><td colspan="5">Carga los reportes para consultar resultados.</td></tr></tbody></table></div></section>
+            <section class="report-table-card"><div class="subheading"><h2>Historial de corridas</h2><button id="refreshReportsHistory" class="link-button">Actualizar</button></div><div class="table-scroll"><table><thead><tr><th>Simulación</th><th>Especie</th><th>Modelo</th><th>Estado</th><th>Día</th></tr></thead><tbody id="reportHistoryBody"><tr><td colspan="5">No hay datos cargados.</td></tr></tbody></table></div></section>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="module" src="main.js"></script>
+</body>
+</html>
