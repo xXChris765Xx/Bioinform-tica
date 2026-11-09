@@ -94,33 +94,3 @@ CREATE TABLE IF NOT EXISTS decisiones (
   CONSTRAINT fk_decisiones_mediciones FOREIGN KEY (medicion_id) REFERENCES mediciones(id) ON DELETE SET NULL,
   INDEX idx_decisiones_simulacion_fecha (simulacion_id, creada_en)
 ) ENGINE=InnoDB;
-
-CREATE TABLE IF NOT EXISTS geo_cache (
-  cache_key CHAR(64) NOT NULL PRIMARY KEY,
-  proveedor VARCHAR(40) NOT NULL,
-  respuesta JSON NOT NULL,
-  consultado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  expira_en DATETIME NOT NULL,
-  INDEX idx_geo_cache_expira (expira_en)
-) ENGINE=InnoDB;
-
-CREATE TABLE IF NOT EXISTS geo_provider_limits (
-  proveedor VARCHAR(40) NOT NULL PRIMARY KEY,
-  ultima_consulta TIMESTAMP NULL DEFAULT NULL
-) ENGINE=InnoDB;
-
-CREATE TABLE IF NOT EXISTS analisis_geograficos (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  simulacion_id BIGINT UNSIGNED NULL,
-  especie_id BIGINT UNSIGNED NULL,
-  nombre_lugar VARCHAR(180) NOT NULL,
-  latitud DECIMAL(9,6) NOT NULL,
-  longitud DECIMAL(9,6) NOT NULL,
-  idoneidad DECIMAL(5,2) NULL,
-  datos JSON NOT NULL,
-  creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_geo_analisis_simulacion FOREIGN KEY (simulacion_id) REFERENCES simulaciones(id) ON DELETE SET NULL,
-  CONSTRAINT fk_geo_analisis_especie FOREIGN KEY (especie_id) REFERENCES especies(id) ON DELETE SET NULL,
-  INDEX idx_geo_analisis_fecha (creado_en),
-  INDEX idx_geo_analisis_coordenadas (latitud, longitud)
-) ENGINE=InnoDB;

@@ -4,18 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#17281f">
-    <title>Práctica 06 · Observatorio global de cultivos</title>
+    <title>Práctica 05 · Laboratorio de cultivo de limón</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <header class="topbar">
         <div class="brand">
             <span class="brand-mark">L</span>
-            <div><strong>BioCultivo</strong><span>Práctica 06 · Observatorio global</span></div>
+            <div><strong>BioCultivo</strong><span>Práctica 05 · Citrus limon</span></div>
         </div>
         <nav class="view-tabs" aria-label="Vistas">
             <button class="view-tab active" data-view="simulator">Simulador</button>
-            <button class="view-tab" data-view="observatory">Observatorio</button>
             <button class="view-tab" data-view="reports">Reportes</button>
         </nav>
         <div class="connection"><i id="connectionDot"></i><span id="connectionState">Conectando a la API…</span></div>
@@ -139,67 +138,6 @@
                     <button id="csvButton" class="button secondary">Exportar CSV</button>
                     <button id="pdfButton" class="button secondary">Imprimir / PDF</button>
                 </div>
-            </aside>
-        </section>
-
-        <section id="observatoryView" class="workspace geo-workspace">
-            <aside class="panel left-panel geo-controls">
-                <div class="section-heading"><div><span class="eyebrow">EXPLORACIÓN GLOBAL</span><h1>Observatorio</h1></div><span class="species-icon">🌐</span></div>
-                <p class="hint">Haz clic en el globo para consultar clima, suelo y biodiversidad reales.</p>
-                <div class="control-section">
-                    <h2>Coordenadas</h2>
-                    <label class="field-label" for="geoLatitude">Latitud</label><input id="geoLatitude" type="number" min="-90" max="90" step="0.001" value="14.291">
-                    <label class="field-label" for="geoLongitude">Longitud</label><input id="geoLongitude" type="number" min="-180" max="180" step="0.001" value="-89.895">
-                    <button id="geoSearchButton" class="button primary full">Consultar ubicación</button>
-                </div>
-                <div class="control-section">
-                    <h2>Especie observada</h2>
-                    <select id="geoSpeciesSelect"><option value="1">Limonero · Citrus limon</option></select>
-                    <p id="geoOccurrenceStatus" class="geo-point-status">Cargando puntos de presencia registrados para esta especie…</p>
-                    <p class="geo-hotspot-heading">Zonas con más registros</p>
-                    <div class="button-row geo-hotspot-row">
-                        <button id="geoHotspot1" class="button secondary geo-hotspot-button" disabled>Buscando zona…</button>
-                        <button id="geoHotspot2" class="button secondary geo-hotspot-button" disabled>Buscando zona…</button>
-                    </div>
-                </div>
-                <div class="control-section">
-                    <h2>Comparar ubicaciones A/B</h2>
-                    <div class="button-row"><button id="geoSaveA" class="button secondary">Guardar como A</button><button id="geoSaveB" class="button secondary">Guardar como B</button></div>
-                    <div id="geoCompareResult" class="geo-compare-result">Guarda dos sitios para comparar sus datos.</div>
-                </div>
-                <div class="control-section">
-                    <h2>Simular este lugar</h2>
-                    <p class="hint">Usa los datos disponibles para precargar las condiciones del simulador.</p>
-                    <button id="geoUseSimulation" class="button secondary full" disabled>Usar datos en simulación</button>
-                </div>
-                <div class="control-section">
-                    <button id="geoSaveAnalysis" class="button secondary full" disabled>Guardar análisis en MySQL</button>
-                    <span id="geoSaveStatus" class="hint"></span>
-                </div>
-            </aside>
-            <section class="geo-scene-column">
-                <div id="globeScene" aria-label="Globo 3D interactivo; haz clic para seleccionar coordenadas"></div>
-                <div class="scene-caption"><span>●</span> Globo 3D · clic para explorar · arrastra para rotar</div>
-                <div class="geo-legend"><span><i class="legend-site"></i> Sitio consultado</span><span><i class="legend-gbif"></i> Ocurrencias GBIF · clic para explorar</span></div>
-                <div id="geoLoading" class="geo-loading" hidden>Consultando fuentes públicas…</div>
-            </section>
-            <aside class="panel right-panel geo-details">
-                <div class="section-heading"><div><span class="eyebrow">DATOS REALES</span><h2 id="geoPlaceTitle">Selecciona un punto</h2></div></div>
-                <div id="geoDataStatus" class="geo-status">Open-Meteo · NASA POWER · SoilGrids · GBIF</div>
-                <section class="geo-context-card"><span>ÁREA SELECCIONADA</span><strong id="geoAreaName">Elige un punto del globo</strong><p id="geoAreaDetails">Aquí aparecerá la localidad, región y país más cercanos, además de las coordenadas y altitud.</p></section>
-                <div class="geo-kpi-grid">
-                    <article class="kpi"><span>Temperatura actual</span><strong id="geoTemp">—</strong></article>
-                    <article class="kpi"><span>Lluvia anual</span><strong id="geoRain">—</strong></article>
-                    <article class="kpi"><span>Radiación solar media</span><strong id="geoRadiation">—</strong></article>
-                    <article class="kpi"><span>Idoneidad estimada</span><strong id="geoSuitability">—</strong></article>
-                    <article class="kpi"><span>pH suelo (0–5 cm)</span><strong id="geoPh">—</strong></article>
-                    <article class="kpi"><span>Arcilla / arena</span><strong id="geoTexture">—</strong></article>
-                    <article class="kpi"><span>Ocurrencias GBIF</span><strong id="geoGbifCount">—</strong></article>
-                    <article class="kpi"><span>Humedad actual</span><strong id="geoHumidity">—</strong></article>
-                </div>
-                <section class="geo-rank-section"><div class="subheading"><h3>Idoneidad por especie</h3><span>estimación inicial</span></div><div id="geoRanking" class="geo-ranking"><p>Consulta un punto para calcular el ranking.</p></div></section>
-                <section class="geo-rank-section"><div class="subheading"><h3>Recomendaciones</h3><span>según umbrales</span></div><div id="geoRules" class="geo-rules"><p>Sin recomendaciones todavía.</p></div></section>
-                <div class="geo-attribution">Los puntos luminosos muestran registros geográficos publicados en GBIF; clic en uno para consultar esa área. No representan el límite completo de distribución ni confirman que la planta siga presente en cada sitio. Localidades: © OpenStreetMap contributors. Clima: Open-Meteo y NASA POWER; suelo: ISRIC SoilGrids; biodiversidad: GBIF.</div>
             </aside>
         </section>
 

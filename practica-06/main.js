@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { createGeoGlobe } from './geo-globe.js';
 import {
     calculateStress,
     createInitialState,
@@ -32,9 +31,6 @@ const clamp = (value, min = 0, max = 100) => Math.min(max, Math.max(min, value))
 const number = (id) => Number($(id).value);
 const formatNumber = (value, digits = 0) => Number(value ?? 0).toLocaleString('es-MX', { maximumFractionDigits: digits, minimumFractionDigits: digits });
 const initialConditions = { temperatureC: 25, humidityPct: 60, sunHours: 8, windKmh: 10, irrigationLWeek: 80, soilPh: 6.5 };
-function fillSpeciesSelect(select, selectedId) {
-    select.innerHTML = speciesCatalog.map((item) => `<option value="${item.id}" ${Number(item.id) === Number(selectedId) ? 'selected' : ''}>${escapeHtml(item.nombre_comun)} · ${escapeHtml(item.nombre_cientifico)}</option>`).join('');
-}
 
 let species = FALLBACK_SPECIES;
 let simulationId = null;
@@ -48,15 +44,6 @@ let selectedObject = null;
 let frameTime = 0;
 let simulationWriteQueue = Promise.resolve();
 let apiOnline = false;
-let speciesCatalog = [FALLBACK_SPECIES];
-let geoGlobe = null;
-let activeGeoData = null;
-let geoSiteA = null;
-let geoSiteB = null;
-let geoDataAppliedToSimulation = false;
-let geoOccurrenceRequestId = 0;
-let geoHotspots = [];
-let geoHotspotsLoading = false;
 
 // ── Visor Three.js: limonero procedural con jerarquía, viento y raycasting ──
 const sceneHost = $('scene');
@@ -527,21 +514,17 @@ async function connectApi() {
     }
     try {
         const catalog = await apiRequest('/especies');
-        if (catalog.length) speciesCatalog = catalog;
         const lemon = catalog.find((item) => item.nombre_cientifico === 'Citrus limon');
         if (lemon) {
             species = lemon;
-            fillSpeciesSelect($('speciesSelect'), lemon.id);
-            fillSpeciesSelect($('geoSpeciesSelect'), lemon.id);
+            $('speciesSelect').innerHTML = `<option value="${lemon.id}">${lemon.nombre_comun} · ${lemon.nombre_cientifico}</option>`;
             $('rateInput').value = Number(lemon.r).toFixed(4);
             $('capacityInput').value = Number(lemon.capacidad_carga).toFixed(1);
         } else {
             $('speciesSelect').innerHTML = `<option value="1">Limonero · Citrus limon (local)</option>`;
-            fillSpeciesSelect($('geoSpeciesSelect'), species.id);
         }
     } catch {
         $('speciesSelect').innerHTML = `<option value="1">Limonero · Citrus limon (local)</option>`;
-        fillSpeciesSelect($('geoSpeciesSelect'), species.id);
     }
     renderState();
     refreshHistory();
@@ -580,17 +563,6 @@ async function createStoredSimulation() {
             saludInicialPct: state.healthPct
         })
     });
-    if (activeGeoData && geoDataAppliedToSimulation) {
-        try {
-            await apiRequest('/geo/analyses', { method: 'POST', body: JSON.stringify({
-                lat: activeGeoData.coordinates.lat, lon: activeGeoData.coordinates.lon,
-                nombre: activeGeoData.place, especieId: Number($('speciesSelect').value || 0) || null,
-                simulacionId: created.id, data: activeGeoData
-            }) });
-            $('geoSaveStatus').textContent = `Análisis vinculado a la simulación #${created.id}.`;
-            geoDataAppliedToSimulation = false;
-        } catch (error) { console.warn('No se pudo asociar el análisis geográfico a la simulación.', error); }
-    }
     return created.id;
 }
 
@@ -665,8 +637,7 @@ async function loadStoredSimulation() {
         const matchingSpecies = storedSpecies.find((item) => Number(item.id) === Number(saved.especie_id));
         if (matchingSpecies) {
             species = matchingSpecies;
-            fillSpeciesSelect($('speciesSelect'), species.id);
-            fillSpeciesSelect($('geoSpeciesSelect'), species.id);
+            $('speciesSelect').innerHTML = `<option value="${species.id}">${escapeHtml(species.nombre_comun)} · ${escapeHtml(species.nombre_cientifico)}</option>`;
         }
         simulationId = id;
         simulationRunning = false;
@@ -854,216 +825,6 @@ function exportCsv() {
     URL.revokeObjectURL(link.href);
 }
 
-// ── Observatorio geoespacial ──
-function geoScoreForSpecies(data, crop) {
-    const rawTemp = data?.climate?.annualMeanTempC ?? data?.weather?.current?.temperature_2m;
-    const temp = rawTemp == null ? Number.NaN : Number(rawTemp);
-    const minTemp = Number(crop.temperatura_min_c ?? 17);
-    const maxTemp = Number(crop.temperatura_max_c ?? 28);
-    const mid = (minTemp + maxTemp) / 2;
-    const temperatureScore = Number.isFinite(temp) ? Math.max(0, 100 - Math.abs(temp - mid) / Math.max(1, maxTemp - minTemp) * 100) : 55;
-    const ph = data?.soil?.ph == null ? Number.NaN : Number(data.soil.ph);
-    const minPh = Number(crop.ph_min ?? 6); const maxPh = Number(crop.ph_max ?? 7);
-    const soilScore = Number.isFinite(ph) ? Math.max(0, 100 - Math.max(minPh - ph, ph - maxPh, 0) * 25) : 55;
-    const rain = data?.climate?.annualPrecipitationMm == null ? Number.NaN : Number(data.climate.annualPrecipitationMm);
-    const waterScore = Number.isFinite(rain) ? Math.min(100, Math.max(0, rain / 8)) : 55;
-    return Math.round((temperatureScore * .4 + soilScore * .35 + waterScore * .25) * 10) / 10;
-}
-
-const fmtGeo = (value, digits = 1) => value == null || value === '' || !Number.isFinite(Number(value)) ? '—' : Number(value).toLocaleString('es-MX', { maximumFractionDigits: digits, minimumFractionDigits: digits });
-const currentGeoSpecies = () => speciesCatalog.find((crop) => Number(crop.id) === Number($('geoSpeciesSelect').value)) ?? species;
-function showGeoData(data) {
-    activeGeoData = data;
-    $('geoPlaceTitle').textContent = data.place ?? `${fmtGeo(data.coordinates.lat, 3)}°, ${fmtGeo(data.coordinates.lon, 3)}°`;
-    const location = data.location ?? {};
-    const hasAreaName = Boolean(location.locality || location.region || location.country);
-    $('geoAreaName').textContent = hasAreaName ? data.place : 'No se encontró una localidad cercana';
-    const areaDetails = [`${fmtGeo(data.coordinates.lat, 3)}° lat, ${fmtGeo(data.coordinates.lon, 3)}° lon`];
-    if (location.elevationMeters != null) areaDetails.push(`${fmtGeo(location.elevationMeters, 0)} m s. n. m.`);
-    if (location.feature || location.addressType) areaDetails.push(`Zona: ${location.feature ?? location.addressType}`);
-    $('geoAreaDetails').textContent = areaDetails.join(' · ');
-    $('geoTemp').textContent = data.weather?.current?.temperature_2m == null ? '—' : `${fmtGeo(data.weather.current.temperature_2m)} °C`;
-    $('geoRain').textContent = data.climate?.annualPrecipitationMm == null ? '—' : `${fmtGeo(data.climate.annualPrecipitationMm, 0)} mm`;
-    $('geoRadiation').textContent = data.climate?.solarRadiation == null ? '—' : `${fmtGeo(data.climate.solarRadiation, 1)} MJ/m²/d`;
-    $('geoSuitability').textContent = data.suitability == null ? '—' : `${fmtGeo(data.suitability)} / 100`;
-    $('geoPh').textContent = data.soil?.ph == null ? 'Sin dato' : fmtGeo(data.soil.ph, 2);
-    $('geoTexture').textContent = data.soil?.clayPct == null && data.soil?.sandPct == null ? 'Sin dato' : `${fmtGeo(data.soil?.clayPct)} / ${fmtGeo(data.soil?.sandPct)} %`;
-    $('geoGbifCount').textContent = data.biodiversity?.count == null ? 'Sin dato' : Number(data.biodiversity.count).toLocaleString('es-MX');
-    $('geoHumidity').textContent = data.weather?.current?.relative_humidity_2m == null ? '—' : `${fmtGeo(data.weather.current.relative_humidity_2m, 0)} %`;
-    $('geoSaveAnalysis').disabled = false;
-    $('geoUseSimulation').disabled = false;
-    const providerErrors = Object.entries(data.errors ?? {});
-    $('geoDataStatus').textContent = providerErrors.length ? `Fuentes con error: ${providerErrors.map(([name]) => name).join(', ')}` : 'Datos recibidos · ' + new Date(data.fetchedAt).toLocaleString('es-MX');
-    const rank = speciesCatalog.map((crop) => ({ crop, score: geoScoreForSpecies(data, crop) })).sort((a, b) => b.score - a.score);
-    $('geoRanking').innerHTML = rank.map(({ crop, score }, index) => `<div class="rank-row"><span>${index + 1}. ${escapeHtml(crop.nombre_comun)}</span><strong>${fmtGeo(score)}%</strong><i><b style="width:${score}%"></b></i></div>`).join('') || '<p>No hay especies cargadas.</p>';
-    const rules = [...(data.rules ?? [])];
-    if (data.biodiversity?.count != null && data.biodiversity.count === 0 && !rules.some((rule) => rule.rule === 'sin_registros_gbif')) rules.push({ priority: 'aviso', message: 'GBIF no tiene registros en esta área; la falta de registros no implica ausencia de la especie.' });
-    $('geoRules').innerHTML = rules.length ? rules.map((rule) => `<article class="geo-rule ${rule.priority === 'critica' ? 'critical' : ''}">${escapeHtml(rule.message)}</article>`).join('') : '<p>Los datos disponibles no activan umbrales de riesgo.</p>';
-    geoGlobe?.setSite(data.coordinates.lat, data.coordinates.lon);
-}
-
-async function loadGeoOccurrences(speciesId = $('geoSpeciesSelect').value) {
-    const requestId = ++geoOccurrenceRequestId;
-    $('geoOccurrenceStatus').textContent = 'Cargando ocurrencias globales de GBIF…';
-    geoHotspots = [];
-    geoHotspotsLoading = true;
-    renderGeoHotspots();
-    geoGlobe?.setOccurrences([]);
-    try {
-        const response = await apiRequest(`/geo/occurrences?speciesId=${encodeURIComponent(speciesId)}`);
-        if (requestId !== geoOccurrenceRequestId) return;
-        const points = response.points ?? [];
-        geoHotspots = findGeoHotspots(points);
-        geoHotspotsLoading = false;
-        geoGlobe?.setOccurrences(points);
-        renderGeoHotspots();
-        const total = Number(response.count ?? 0).toLocaleString('es-MX');
-        $('geoOccurrenceStatus').textContent = points.length
-            ? `${points.length} puntos cargados de ${total} registros globales; los focos resumen esta muestra.`
-            : `GBIF reporta ${total} registros globales, pero no devolvió puntos con coordenadas.`;
-    } catch (error) {
-        if (requestId !== geoOccurrenceRequestId) return;
-        geoHotspotsLoading = false;
-        renderGeoHotspots();
-        $('geoOccurrenceStatus').textContent = `No se pudieron precargar los puntos GBIF: ${error.message}`;
-    }
-}
-
-function geoDistanceKm(a, b) {
-    const radians = Math.PI / 180;
-    const lat1 = a.lat * radians; const lat2 = b.lat * radians;
-    const deltaLat = (b.lat - a.lat) * radians; const deltaLon = (b.lon - a.lon) * radians;
-    const chord = Math.sin(deltaLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLon / 2) ** 2;
-    return 6371 * 2 * Math.atan2(Math.sqrt(chord), Math.sqrt(Math.max(0, 1 - chord)));
-}
-
-function findGeoHotspots(points) {
-    const cellDegrees = 2;
-    const cells = new Map();
-    points.forEach((point) => {
-        const lat = Number(point.lat); const lon = Number(point.lon);
-        if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) return;
-        const row = Math.min(89, Math.floor((lat + 90) / cellDegrees));
-        const column = Math.min(179, Math.floor((lon + 180) / cellDegrees));
-        const key = `${row}:${column}`;
-        if (!cells.has(key)) cells.set(key, []);
-        cells.get(key).push({ ...point, lat, lon });
-    });
-
-    const candidates = [...cells.values()].map((records) => {
-        let x = 0; let y = 0; let z = 0;
-        records.forEach(({ lat, lon }) => {
-            const latitude = lat * Math.PI / 180; const longitude = lon * Math.PI / 180;
-            x += Math.cos(latitude) * Math.cos(longitude);
-            y += Math.sin(latitude);
-            z += Math.cos(latitude) * Math.sin(longitude);
-        });
-        const center = {
-            lat: Math.atan2(y, Math.hypot(x, z)) * 180 / Math.PI,
-            lon: Math.atan2(z, x) * 180 / Math.PI
-        };
-        const representative = records.reduce((best, record) => geoDistanceKm(center, record) < geoDistanceKm(center, best) ? record : best);
-        const placeCounts = new Map();
-        records.forEach((record) => {
-            const place = [record.locality, record.stateProvince, record.country].find((value) => typeof value === 'string' && value.trim());
-            if (place) placeCounts.set(place.trim(), (placeCounts.get(place.trim()) ?? 0) + 1);
-        });
-        const place = [...placeCounts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
-        return { lat: representative.lat, lon: representative.lon, count: records.length, place };
-    }).sort((a, b) => b.count - a.count);
-
-    const hotspots = [];
-    candidates.forEach((candidate) => {
-        if (hotspots.length < 2 && hotspots.every((hotspot) => geoDistanceKm(hotspot, candidate) >= 300)) hotspots.push(candidate);
-    });
-    return hotspots;
-}
-
-function renderGeoHotspots() {
-    [$('geoHotspot1'), $('geoHotspot2')].forEach((button, index) => {
-        const hotspot = geoHotspots[index];
-        button.replaceChildren();
-        if (!hotspot) {
-            button.textContent = geoHotspotsLoading ? 'Calculando foco…' : index === 0 ? 'Sin focos disponibles' : 'Sin otro foco distante';
-            button.title = 'Se necesitan registros GBIF con coordenadas para sugerir una zona.';
-            button.disabled = true;
-            button.removeAttribute('aria-label');
-            return;
-        }
-        const place = hotspot.place || `${fmtGeo(hotspot.lat, 2)}°, ${fmtGeo(hotspot.lon, 2)}°`;
-        const name = document.createElement('span');
-        name.textContent = place.length > 21 ? `${place.slice(0, 20)}…` : place;
-        const count = document.createElement('small');
-        count.textContent = `${hotspot.count} registro${hotspot.count === 1 ? '' : 's'}`;
-        button.append(name, count);
-        button.title = `${place} · ${fmtGeo(hotspot.lat, 3)}°, ${fmtGeo(hotspot.lon, 3)}° · ${count.textContent}`;
-        button.setAttribute('aria-label', `Consultar ${place}, zona con ${count.textContent}`);
-        button.disabled = false;
-    });
-}
-
-function selectGeoHotspot(index) {
-    const hotspot = geoHotspots[index];
-    if (hotspot) loadGeoSite(hotspot.lat, hotspot.lon);
-}
-
-async function loadGeoSite(latitude, longitude) {
-    const lat = Number(latitude); const lon = Number(longitude);
-    if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
-        $('geoDataStatus').textContent = 'Coordenadas inválidas.'; return;
-    }
-    $('geoLatitude').value = lat.toFixed(3); $('geoLongitude').value = lon.toFixed(3);
-    geoGlobe?.setSite(lat, lon);
-    $('geoLoading').hidden = false; $('geoDataStatus').textContent = 'Consultando Open-Meteo, NASA POWER, SoilGrids y GBIF…';
-    $('geoSaveAnalysis').disabled = true; $('geoUseSimulation').disabled = true;
-    const speciesId = encodeURIComponent($('geoSpeciesSelect').value || '');
-    try {
-        const data = await apiRequest(`/geo/site?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&speciesId=${speciesId}`);
-        showGeoData(data);
-    } catch (error) {
-        $('geoDataStatus').textContent = error.message === 'Failed to fetch'
-            ? 'No conecta con FlightPHP en 127.0.0.1:8000. Inicia la API; se volverá a intentar automáticamente.'
-            : `No se pudo consultar el observatorio: ${error.message}`;
-    } finally { $('geoLoading').hidden = true; }
-}
-
-function compareGeoSites() {
-    if (!geoSiteA || !geoSiteB) { $('geoCompareResult').textContent = 'Guarda dos sitios para comparar sus datos.'; return; }
-    const crop = currentGeoSpecies();
-    const a = geoScoreForSpecies(geoSiteA, crop); const b = geoScoreForSpecies(geoSiteB, crop);
-    const winner = Math.abs(a - b) < 2 ? 'Resultado cercano: no hay una diferencia clara.' : `${a > b ? 'A' : 'B'} presenta mayor idoneidad estimada para ${crop.nombre_comun}.`;
-    $('geoCompareResult').innerHTML = `<strong>${winner}</strong><div>A · ${escapeHtml(geoSiteA.place)}: ${fmtGeo(a)} / 100</div><div>B · ${escapeHtml(geoSiteB.place)}: ${fmtGeo(b)} / 100</div><div>Lluvia anual: ${fmtGeo(geoSiteA.climate?.annualPrecipitationMm, 0)} vs ${fmtGeo(geoSiteB.climate?.annualPrecipitationMm, 0)} mm</div>`;
-}
-
-async function saveGeoAnalysis() {
-    if (!activeGeoData) return;
-    $('geoSaveStatus').textContent = 'Guardando…';
-    try {
-        const data = await apiRequest('/geo/analyses', { method: 'POST', body: JSON.stringify({ lat: activeGeoData.coordinates.lat, lon: activeGeoData.coordinates.lon, nombre: activeGeoData.place, especieId: Number($('geoSpeciesSelect').value || 0) || null, simulacionId: simulationId, data: activeGeoData }) });
-        $('geoSaveStatus').textContent = `Análisis #${data.id} guardado en MySQL.`;
-    } catch (error) { $('geoSaveStatus').textContent = `No se pudo guardar: ${error.message}`; }
-}
-
-function applyGeoToSimulation() {
-    if (!activeGeoData) return;
-    geoDataAppliedToSimulation = true;
-    const crop = currentGeoSpecies();
-    species = crop;
-    fillSpeciesSelect($('speciesSelect'), crop.id);
-    $('rateInput').value = Number(crop.r ?? 0.0025).toFixed(4);
-    $('capacityInput').value = Number(crop.capacidad_carga ?? 1).toFixed(1);
-    const current = activeGeoData.weather?.current ?? {};
-    const temperature = activeGeoData.climate?.annualMeanTempC ?? current.temperature_2m;
-    if (temperature != null && Number.isFinite(Number(temperature))) $('temperatureInput').value = String(clamp(Number(temperature), -5, 45));
-    if (current.relative_humidity_2m != null && Number.isFinite(Number(current.relative_humidity_2m))) $('humidityInput').value = String(clamp(Number(current.relative_humidity_2m), 10, 100));
-    if (activeGeoData.soil?.ph != null && Number.isFinite(Number(activeGeoData.soil.ph))) $('phInput').value = String(clamp(Number(activeGeoData.soil.ph), 4, 9));
-    const radiation = Number(activeGeoData.climate?.solarRadiation);
-    if (activeGeoData.climate?.solarRadiation != null && Number.isFinite(radiation)) $('lightInput').value = String(clamp(5 + radiation / 5, 0, 14));
-    $('runName').value = `Sitio ${activeGeoData.place} · ${crop.nombre_comun}`;
-    ['temperatureInput', 'humidityInput', 'phInput', 'lightInput'].forEach((id) => $(id).dispatchEvent(new Event('input', { bubbles: true })));
-    document.querySelector('[data-view="simulator"]').click();
-}
-
 // ── Interfaz ──
 function bindControls() {
     const outputs = [
@@ -1082,17 +843,6 @@ function bindControls() {
         const update = () => { output.textContent = format(input.value); renderState(); };
         input.addEventListener('input', update);
         update();
-    });
-    $('speciesSelect').addEventListener('change', () => {
-        const selected = speciesCatalog.find((crop) => Number(crop.id) === Number($('speciesSelect').value));
-        if (!selected) return;
-        species = selected;
-        $('geoSpeciesSelect').value = String(selected.id);
-        $('rateInput').value = Number(selected.r ?? 0.0025).toFixed(4);
-        $('capacityInput').value = Number(selected.capacidad_carga ?? 1).toFixed(1);
-        renderState();
-        if (geoGlobe) loadGeoOccurrences(selected.id);
-        if (activeGeoData) loadGeoSite(activeGeoData.coordinates.lat, activeGeoData.coordinates.lon);
     });
     $('runButton').addEventListener('click', () => {
         if (simulationRunning) {
@@ -1113,29 +863,11 @@ function bindControls() {
     document.querySelectorAll('.view-tab').forEach((button) => button.addEventListener('click', () => {
         document.querySelectorAll('.view-tab').forEach((tab) => tab.classList.toggle('active', tab === button));
         const reports = button.dataset.view === 'reports';
-        const observatory = button.dataset.view === 'observatory';
-        $('simulatorView').classList.toggle('active', !reports && !observatory);
-        $('observatoryView').classList.toggle('active', observatory);
+        $('simulatorView').classList.toggle('active', !reports);
         $('reportsView').classList.toggle('active', reports);
         if (reports) loadReports();
-        if (observatory && !geoGlobe) {
-            geoGlobe = createGeoGlobe($('globeScene'), loadGeoSite);
-            loadGeoOccurrences();
-            loadGeoSite($('geoLatitude').value, $('geoLongitude').value);
-        }
         setTimeout(resizeRenderer, 40);
     }));
-    $('geoSearchButton').addEventListener('click', () => loadGeoSite($('geoLatitude').value, $('geoLongitude').value));
-    $('geoHotspot1').addEventListener('click', () => selectGeoHotspot(0));
-    $('geoHotspot2').addEventListener('click', () => selectGeoHotspot(1));
-    $('geoSpeciesSelect').addEventListener('change', () => {
-        loadGeoOccurrences();
-        if (activeGeoData) loadGeoSite(activeGeoData.coordinates.lat, activeGeoData.coordinates.lon);
-    });
-    $('geoSaveA').addEventListener('click', () => { if (activeGeoData) { geoSiteA = activeGeoData; $('geoCompareResult').textContent = `Ubicación A guardada: ${activeGeoData.place}`; compareGeoSites(); } });
-    $('geoSaveB').addEventListener('click', () => { if (activeGeoData) { geoSiteB = activeGeoData; $('geoCompareResult').textContent = `Ubicación B guardada: ${activeGeoData.place}`; compareGeoSites(); } });
-    $('geoSaveAnalysis').addEventListener('click', saveGeoAnalysis);
-    $('geoUseSimulation').addEventListener('click', applyGeoToSimulation);
 }
 
 function resizeRenderer() {
@@ -1178,18 +910,4 @@ state.stress = calculateStress({ ...initialConditions, soilMoisturePct: state.so
 state.recommendation = { priority: 'info', text: 'Inicia la simulación para recibir recomendaciones de manejo.' };
 renderState();
 connectApi();
-setInterval(async () => {
-    try {
-        await apiRequest('/health');
-        if (!apiOnline) {
-            await connectApi();
-            if (apiOnline && $('observatoryView').classList.contains('active')) {
-                loadGeoOccurrences();
-                loadGeoSite($('geoLatitude').value, $('geoLongitude').value);
-            }
-        }
-    } catch {
-        if (apiOnline) setApiStatus(false, 'API o MySQL sin conexión');
-    }
-}, 15000);
 animate();
